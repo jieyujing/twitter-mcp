@@ -141,6 +141,29 @@ Add to your MCP client config (e.g. `mcp.json`, `settings.json`):
 
 > Works with: Claude Code, Claude Desktop, Cursor, Windsurf, opencode, Cline, Pi, DeepSeek Harness (dsh), etc. — see the [Install page](https://tangivis.github.io/twitter-mcp/install/).
 
+#### Deploy on Prefect Horizon
+
+This repository includes a thin Horizon adapter at `horizon_server.py`. It
+keeps the normal stdio server unchanged and exposes the same `mcp` object for
+Horizon to import.
+
+Configure the Horizon server entrypoint as:
+
+```text
+horizon_server.py:mcp
+```
+
+Store the browser-cookie values as Horizon environment variables:
+
+```text
+TWITTER_CT0=...
+TWITTER_AUTH_TOKEN=...
+```
+
+The adapter writes those values to a mode-`0600` temporary JSON file, sets
+`TWITTER_COOKIES`, and only then imports `twitter_mcp.server`. Do not commit
+real cookie values or a `cookies.json` file to Git.
+
 That's it. Start talking:
 
 ```
