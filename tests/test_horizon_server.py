@@ -31,13 +31,36 @@ def _load_adapter(module_name: str):
         sys.modules.pop(module_name, None)
 
 
-def test_horizon_adapter_requires_cookie_env(monkeypatch):
+def test_horizon_adapter_allows_inspection_without_cookie_env(monkeypatch):
     monkeypatch.delenv("TWITTER_CT0", raising=False)
     monkeypatch.delenv("TWITTER_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("TWITTER_COOKIES", raising=False)
+    fake_server = types.ModuleType("twitter_mcp.server")
+    fake_server.mcp = object()
+    monkeypatch.setitem(sys.modules, "twitter_mcp.server", fake_server)
 
-    with pytest.raises(RuntimeError, match="TWITTER_CT0"):
-        _load_adapter("_twitter_mcp_horizon_missing_env")
+    module = _load_adapter("_twitter_mcp_horizon_missing_env")
+
+    assert module.mcp is fake_server.mcp
+    assert "TWITTER_COOKIES" not in os.environ
+
+
+@pytest.mark.parametrize(
+    ("present_name", "missing_name"),
+    [
+        ("TWITTER_CT0", "TWITTER_AUTH_TOKEN"),
+        ("TWITTER_AUTH_TOKEN", "TWITTER_CT0"),
+    ],
+)
+def test_horizon_adapter_rejects_partial_cookie_env(
+    monkeypatch, present_name, missing_name
+):
+    monkeypatch.setenv(present_name, "configured")
+    monkeypatch.delenv(missing_name, raising=False)
+    monkeypatch.delenv("TWITTER_COOKIES", raising=False)
+
+    with pytest.raises(RuntimeError, match="must be configured together"):
+        _load_adapter(f"_twitter_mcp_horizon_partial_{present_name.lower()}")
 
 
 def test_horizon_adapter_materializes_cookie_file(monkeypatch):
