@@ -27,6 +27,9 @@ dependencies = [
     # exactly what issue #109 was filed for. Lift this only together with
     # the corresponding migration. Guarded by tests/test_dependency_pins.py.
     "mcp[cli]>=2,<3",
+    # Horizon Deploy builds servers with the FastMCP runtime. FastMCP 4 is
+    # the line compatible with MCP SDK v2; keep both majors bounded together.
+    "fastmcp>=4,<5",
     "httpx[socks]",
     "beautifulsoup4",
     "filetype",

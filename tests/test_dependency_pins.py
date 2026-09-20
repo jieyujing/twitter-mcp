@@ -34,6 +34,7 @@ _PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
 # `"mcp[cli]>=2,<3",` → captures the specifier `>=2,<3`.
 # Extras are optional so the sentinel survives a future `"mcp>=..."`.
 _MCP_DEP_RE = re.compile(r"""["']mcp(?:\[[^\]]*\])?([^"']*)["']""")
+_FASTMCP_DEP_RE = re.compile(r"""["']fastmcp([^"']*)["']""")
 
 
 def _mcp_specifier() -> str:
@@ -49,6 +50,33 @@ def _mcp_specifier() -> str:
         "dependency get renamed or removed?"
     )
     return match.group(1).strip()
+
+
+def _fastmcp_specifier() -> str:
+    """The version specifier declared for the Horizon FastMCP runtime."""
+    src = _PYPROJECT.read_text(encoding="utf-8")
+    block = re.search(r"^dependencies = \[(.*?)^\]", src, re.S | re.M)
+    assert block, "could not locate [project] dependencies array in pyproject.toml"
+    match = _FASTMCP_DEP_RE.search(block.group(1))
+    assert match, (
+        "no `fastmcp` entry found in [project] dependencies — Prefect Horizon "
+        "rejects the build before loading the configured entrypoint"
+    )
+    return match.group(1).strip()
+
+
+def test_fastmcp_dependency_matches_horizon_mcp_v2_runtime():
+    """Horizon requires FastMCP, and v4 is the line compatible with MCP v2."""
+    spec = _fastmcp_specifier()
+    lower = re.search(r">=\s*([0-9][^,\s]*)", spec)
+    upper = re.search(r"<\s*([0-9][^,\s]*)", spec)
+    assert lower and int(re.match(r"(\d+)", lower.group(1)).group(1)) >= 4, (
+        f"`fastmcp` specifier {spec!r} must require FastMCP 4+ for MCP SDK v2"
+    )
+    assert upper and int(re.match(r"(\d+)", upper.group(1)).group(1)) <= 5, (
+        f"`fastmcp` specifier {spec!r} must stay below the next major until "
+        "the Horizon adapter is revalidated"
+    )
 
 
 def test_mcp_dependency_declares_an_upper_bound():

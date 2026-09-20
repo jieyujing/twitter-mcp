@@ -10,6 +10,8 @@ import types
 from pathlib import Path
 
 import pytest
+from fastmcp.utilities.mcp_server_config.v1.sources.filesystem import FileSystemSource
+from mcp.server.mcpserver import MCPServer
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +59,24 @@ def test_horizon_adapter_materializes_cookie_file(monkeypatch):
             "auth_token": "test-auth-token",
         }
         assert module.mcp is not None
+    finally:
+        cookie_path.unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_fastmcp_loader_accepts_horizon_entrypoint(monkeypatch):
+    """Exercise the same file.py:mcp loading seam used by Horizon/FastMCP."""
+    monkeypatch.setenv("TWITTER_CT0", "test-ct0")
+    monkeypatch.setenv("TWITTER_AUTH_TOKEN", "test-auth-token")
+    monkeypatch.delenv("TWITTER_COOKIES", raising=False)
+
+    source = FileSystemSource(path=f"{ADAPTER}:mcp")
+    server = await source.load_server()
+
+    cookie_path = Path(os.environ["TWITTER_COOKIES"])
+    try:
+        assert isinstance(server, MCPServer)
+        assert server.name == "twitter"
     finally:
         cookie_path.unlink(missing_ok=True)
 
